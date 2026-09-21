@@ -2,7 +2,21 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const cookieParser = require("cookie-parser");
+const cors = require("cors"); // ⭐ IMPORTANTE
 const app = express();
+
+// ⭐ CORS PARA PERMITIR GITHUB PAGES
+app.use(cors({
+  origin: "https://ellinkconanuncios.github.io",
+  credentials: true
+}));
+
+// ⭐ HEADERS EXTRA (algunos navegadores los exigen)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://ellinkconanuncios.github.io");
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
 
 app.use(cookieParser());
 
@@ -31,17 +45,16 @@ app.get("/callback", async (req, res) => {
     const accessToken = tokenResponse.data.access_token;
 
     // ⭐ Obtener datos del usuario
-    const userResponse = await axios.get("https://www.patreon.com/api/oauth2/v2/identity?include=memberships", {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    const userResponse = await axios.get(
+      "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
 
     const memberships = userResponse.data.included;
-
-    // ⭐ Verificar si es VIP
     const esVIP = memberships && memberships.length > 0;
 
     if (esVIP) {
-      // ⭐ Crear cookie VIP compatible con Railway
+      // ⭐ Cookie VIP compatible con Railway + GitHub Pages
       res.cookie("vip", "true", {
         httpOnly: false,
         secure: true,
