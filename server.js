@@ -49,7 +49,7 @@ app.get("/callback", async (req, res) => {
         maxAge: 1000 * 60 * 60 * 24 * 30
       });
 
-      return res.redirect("/vip.html");
+      return res.redirect("https://ellinkconanuncios.github.io/vip.html");
     }
 
     return res.send("No tienes membresía VIP.");
