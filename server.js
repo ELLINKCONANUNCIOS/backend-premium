@@ -17,52 +17,49 @@ app.get("/callback", async (req, res) => {
   const code = req.query.code;
 
   try {
-    // Obtener token
-    const tokenResponse = await axios.post(
-      "https://www.patreon.com/api/oauth2/token",
-      {
+    // ⭐ Intercambiar código por token
+    const tokenResponse = await axios.post("https://www.patreon.com/api/oauth2/token", null, {
+      params: {
         grant_type: "authorization_code",
-        code: code,
+        code,
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         redirect_uri: process.env.REDIRECT_URI
       }
-    );
+    });
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Obtener membresía
-    const userResponse = await axios.get(
-      `https://www.patreon.com/api/oauth2/v2/identity?include=memberships`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    );
+    // ⭐ Obtener datos del usuario
+    const userResponse = await axios.get("https://www.patreon.com/api/oauth2/v2/identity?include=memberships", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
 
     const memberships = userResponse.data.included;
-    const isMember = memberships && memberships.length > 0;
 
-    if (isMember) {
-      // ⭐ Guardar cookie VIP
+    // ⭐ Verificar si es VIP
+    const esVIP = memberships && memberships.length > 0;
+
+    if (esVIP) {
+      // ⭐ Crear cookie VIP compatible con Railway
       res.cookie("vip", "true", {
         httpOnly: false,
-        maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
+        secure: true,
+        sameSite: "None",
+        maxAge: 1000 * 60 * 60 * 24 * 30
       });
 
-      // ⭐ Redirigir a tu página VIP (CORREGIDO)
-      return res.redirect("https://ellinkconanuncios.github.io/vip.html");
-    } else {
-      return res.status(403).send("Debes ser suscriptor para acceder a la Zona VIP.");
+      return res.redirect("/vip.html");
     }
+
+    return res.send("No tienes membresía VIP.");
   } catch (error) {
-    console.error(error);
-    return res.status(500).send("Error en la autenticación.");
+    console.error("Error en callback:", error);
+    res.send("Error en la autenticación.");
   }
 });
 
-// ⭐ 3. Ruta opcional para verificar cookie VIP
+// ⭐ 3. Verificar cookie VIP
 app.get("/vip-check", (req, res) => {
   if (req.cookies.vip === "true") {
     return res.json({ vip: true });
@@ -71,4 +68,6 @@ app.get("/vip-check", (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Backend VIP listo"));
+// ⭐ 4. Puerto para Railway
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Backend VIP listo en el puerto " + PORT));
