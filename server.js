@@ -89,4 +89,11 @@ app.get("/callback", async (req, res) => {
 
 // ⭐ Puerto dinámico para Railway
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Backend Patreon activo en puerto " + PORT));
+
+if (!process.env.PORT) {
+  console.log("⚠️ Railway NO envió PORT. Usando 3000.");
+}
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Backend Patreon activo en puerto " + PORT);
+});
