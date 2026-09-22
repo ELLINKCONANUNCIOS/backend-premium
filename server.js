@@ -1,13 +1,26 @@
 const express = require("express");
 const axios = require("axios");
+const cors = require("cors");
 const app = express();
 
+// ⭐ CORS para permitir comunicación con GitHub Pages
+app.use(cors({
+  origin: "https://ellinkconanuncios.github.io",
+  credentials: true
+}));
+
 // ⚠️ NO ESCRIBAS LAS CLAVES AQUÍ
-// Usa variables de entorno en Railway/Render/Replit
 const CLIENT_ID = process.env.PATREON_CLIENT_ID;
 const CLIENT_SECRET = process.env.PATREON_CLIENT_SECRET;
-const REDIRECT_URI = "https://backend-premium-production-29b1.up.railway.app/callback"; // cámbialo por tu URL real
+const REDIRECT_URI = "https://backend-premium-production-29b1.up.railway.app/callback";
 
+// ⭐ Ruta para verificar VIP
+app.get("/vip-check", (req, res) => {
+  const tieneVIP = req.headers.cookie && req.headers.cookie.includes("vip=true");
+  res.json({ vip: tieneVIP });
+});
+
+// ⭐ Login con Patreon
 app.get("/login", (req, res) => {
   const url =
     "https://www.patreon.com/oauth2/authorize" +
@@ -18,6 +31,7 @@ app.get("/login", (req, res) => {
   res.redirect(url);
 });
 
+// ⭐ Callback de Patreon
 app.get("/callback", async (req, res) => {
   const code = req.query.code;
 
@@ -47,7 +61,6 @@ app.get("/callback", async (req, res) => {
     const esVIP = memberships && memberships.length > 0;
 
     if (esVIP) {
-      // crea cookie VIP y redirige a tu página
       res.send(`
         <script>
           document.cookie = "vip=true; path=/";
@@ -73,5 +86,6 @@ app.get("/callback", async (req, res) => {
   }
 });
 
+// ⭐ Puerto dinámico para Railway
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Backend Patreon activo en puerto " + PORT));
