@@ -5,14 +5,14 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 
-// ⭐ Middleware para cookies
-app.use(cookieParser());
-
 // ⭐ CORS para permitir comunicación con GitHub Pages
 app.use(cors({
   origin: "https://ellinkconanuncios.github.io",
   credentials: true
 }));
+
+// ⭐ Middleware para cookies
+app.use(cookieParser());
 
 // ⚠️ Variables de entorno (NO pongas claves aquí)
 const CLIENT_ID = process.env.PATREON_CLIENT_ID;
