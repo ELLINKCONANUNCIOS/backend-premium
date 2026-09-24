@@ -2,8 +2,16 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
 
 const app = express();
+
+// ⭐ ACTIVAR CORS PARA GITHUB PAGES
+app.use(cors({
+  origin: "https://ellinkconanuncios.github.io",
+  credentials: true
+}));
+
 app.use(cookieParser());
 
 // Puerto compatible con Railway
