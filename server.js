@@ -11,11 +11,12 @@ app.use(cors({
   credentials: true
 }));
 
-// ⭐ Headers manuales (Railway a veces ignora CORS normal)
+// ⭐ CORS manual (Railway lo necesita)
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "https://ellinkconanuncios.github.io");
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   next();
 });
 
