@@ -11,10 +11,18 @@ app.use(cors({
   credentials: true
 }));
 
+// ⭐ Headers manuales (Railway a veces ignora CORS normal)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://ellinkconanuncios.github.io");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
+
 // ⭐ Middleware para cookies
 app.use(cookieParser());
 
-// ⚠️ Variables de entorno (NO pongas claves aquí)
+// ⚠️ Variables de entorno
 const CLIENT_ID = process.env.PATREON_CLIENT_ID;
 const CLIENT_SECRET = process.env.PATREON_CLIENT_SECRET;
 
@@ -53,7 +61,6 @@ app.get("/callback", async (req, res) => {
   }
 
   try {
-    // ⭐ Intercambiar código por token
     const tokenRes = await axios.post(
       "https://www.patreon.com/api/oauth2/token",
       null,
@@ -70,7 +77,6 @@ app.get("/callback", async (req, res) => {
 
     const access_token = tokenRes.data.access_token;
 
-    // ⭐ Obtener identidad + membresías
     const userRes = await axios.get(
       "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
       { headers: { Authorization: `Bearer ${access_token}` } }
@@ -80,7 +86,6 @@ app.get("/callback", async (req, res) => {
     const esVIP = memberships && memberships.length > 0;
 
     if (esVIP) {
-      // ⭐ Crear cookie VIP cross-site
       res.cookie("vip", "true", {
         httpOnly: false,
         secure: true,
@@ -88,7 +93,6 @@ app.get("/callback", async (req, res) => {
         path: "/"
       });
 
-      // ⭐ Redirigir a tu página VIP en GitHub Pages
       res.redirect("https://ellinkconanuncios.github.io/vip.html");
     } else {
       res.send(`
