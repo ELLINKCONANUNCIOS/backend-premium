@@ -1,10 +1,8 @@
-import express from "express";
-import axios from "axios";
-import cookieParser from "cookie-parser";
-import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+const express = require("express");
+const axios = require("axios");
+const cookieParser = require("cookie-parser");
+const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 
@@ -15,7 +13,6 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS para GitHub Pages
 app.use(
     cors({
         origin: "https://ellinkconanuncios.github.io",
@@ -23,14 +20,12 @@ app.use(
     })
 );
 
-// Permitir cookies cross-site
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Headers", "Content-Type");
     next();
 });
 
-// Preflight OPTIONS
 app.options("*", cors());
 
 // =========================
@@ -55,12 +50,15 @@ app.get("/login", (req, res) => {
     res.redirect(url);
 });
 
+// =========================
+// CALLBACK UNIVERSAL (FUNCIONA PARA VIP REGALADO)
+// =========================
+
 app.get("/callback", async (req, res) => {
     const code = req.query.code;
     if (!code) return res.send("Error: falta el código");
 
     try {
-        // 1. Intercambiar el código por el access_token
         const tokenResponse = await axios.post(
             "https://www.patreon.com/api/oauth2/token",
             {
@@ -74,19 +72,16 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
-        // 2. Obtener datos del usuario
         const userResponse = await axios.get(
-            "https://www.patreon.com/api/oauth2/v2/identity" +
-            "?fields[user]=full_name,patron_status",
+            "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
             {
                 headers: { Authorization: `Bearer ${accessToken}` }
             }
         );
 
-        // 3. Detectar si es VIP (regalado o normal)
-        const patronStatus = userResponse.data.data.attributes.patron_status;
+        const memberships = userResponse.data.included;
 
-        const esVIP = patronStatus === "active_patron";
+        const esVIP = memberships && memberships.some(m => m.type === "member");
 
         if (!esVIP) {
             return res.redirect(
@@ -94,7 +89,6 @@ app.get("/callback", async (req, res) => {
             );
         }
 
-        // 4. Crear cookie VIP
         res.cookie("vip", "true", {
             httpOnly: false,
             secure: true,
@@ -102,7 +96,6 @@ app.get("/callback", async (req, res) => {
             maxAge: 1000 * 60 * 60 * 24 * 30
         });
 
-        // 5. Redirigir a VIP.html
         res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
     } catch (err) {
@@ -110,7 +103,6 @@ app.get("/callback", async (req, res) => {
         res.status(500).send("Error en callback");
     }
 });
-
 
 // =========================
 // VIP-CHECK
