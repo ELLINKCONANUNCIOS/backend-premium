@@ -2,6 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const qs = require("qs");
 require("dotenv").config();
 
 const app = express();
@@ -23,6 +24,7 @@ app.use(
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.header("Access-Control-Allow-Origin", "https://ellinkconanuncios.github.io");
     next();
 });
 
@@ -51,7 +53,7 @@ app.get("/login", (req, res) => {
 });
 
 // =========================
-// CALLBACK UNIVERSAL (FUNCIONA PARA VIP REGALADO)
+// CALLBACK UNIVERSAL (VIP NORMAL + VIP REGALADO)
 // =========================
 
 app.get("/callback", async (req, res) => {
@@ -59,15 +61,20 @@ app.get("/callback", async (req, res) => {
     if (!code) return res.send("Error: falta el código");
 
     try {
-        // 1. Intercambiar el código por el access_token
+        // 1. Intercambiar el código por el access_token (FORM-URLENCODED)
         const tokenResponse = await axios.post(
             "https://www.patreon.com/api/oauth2/token",
-            {
+            qs.stringify({
                 grant_type: "authorization_code",
                 code,
                 client_id: process.env.CLIENT_ID,
                 client_secret: process.env.CLIENT_SECRET,
                 redirect_uri: process.env.REDIRECT_URI
+            }),
+            {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
             }
         );
 
@@ -123,12 +130,11 @@ app.get("/vip-check", (req, res) => {
 });
 
 // =========================
-// INICIAR SERVIDOR
+// INICIAR SERVIDOR (PUERTO DINÁMICO DE RAILWAY)
 // =========================
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
     console.log("Servidor VIP activo en el puerto " + PORT);
 });
-
