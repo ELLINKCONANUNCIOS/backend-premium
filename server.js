@@ -55,10 +55,6 @@ app.get("/login", (req, res) => {
     res.redirect(url);
 });
 
-// =========================
-// CALLBACK UNIVERSAL (FUNCIONA PARA VIP REGALADO)
-// =========================
-
 app.get("/callback", async (req, res) => {
     const code = req.query.code;
     if (!code) return res.send("Error: falta el código");
@@ -78,37 +74,35 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
-        // 2. Obtener datos del usuario + membresías (UNIVERSAL)
+        // 2. Obtener datos del usuario
         const userResponse = await axios.get(
             "https://www.patreon.com/api/oauth2/v2/identity" +
-            "?include=memberships" +
-            "&fields[member]=patron_status",
+            "?fields[user]=full_name,patron_status",
             {
                 headers: { Authorization: `Bearer ${accessToken}` }
             }
         );
 
-        // 3. Extraer membresías
-        const memberships = userResponse.data.included;
+        // 3. Detectar si es VIP (regalado o normal)
+        const patronStatus = userResponse.data.data.attributes.patron_status;
 
-        // 4. Detectar si tiene membresía activa
-        const tieneNivel = memberships && memberships.length > 0;
+        const esVIP = patronStatus === "active_patron";
 
-        if (!tieneNivel) {
+        if (!esVIP) {
             return res.redirect(
                 "https://ellinkconanuncios.github.io/vip.html?no_membresia=true"
             );
         }
 
-        // 5. Crear cookie VIP compatible con GitHub Pages
+        // 4. Crear cookie VIP
         res.cookie("vip", "true", {
             httpOnly: false,
             secure: true,
             sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
+            maxAge: 1000 * 60 * 60 * 24 * 30
         });
 
-        // 6. Redirigir a tu VIP.html
+        // 5. Redirigir a VIP.html
         res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
     } catch (err) {
@@ -116,6 +110,7 @@ app.get("/callback", async (req, res) => {
         res.status(500).send("Error en callback");
     }
 });
+
 
 // =========================
 // VIP-CHECK
