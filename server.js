@@ -1,7 +1,3 @@
-// =========================
-// CONFIGURACIÓN INICIAL
-// =========================
-
 import express from "express";
 import axios from "axios";
 import cookieParser from "cookie-parser";
@@ -11,18 +7,39 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+
+// =========================
+// MIDDLEWARES
+// =========================
+
+app.use(express.json());
 app.use(cookieParser());
 
-// =========================
-// CORS PARA GITHUB PAGES
-// =========================
-
+// CORS para GitHub Pages
 app.use(
     cors({
         origin: "https://ellinkconanuncios.github.io",
         credentials: true
     })
 );
+
+// Permitir cookies cross-site
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    next();
+});
+
+// Preflight OPTIONS
+app.options("*", cors());
+
+// =========================
+// RUTA RAÍZ
+// =========================
+
+app.get("/", (req, res) => {
+    res.send("Backend VIP activo");
+});
 
 // =========================
 // CALLBACK DE PATREON
@@ -33,7 +50,6 @@ app.get("/callback", async (req, res) => {
     if (!code) return res.send("Error: falta el código");
 
     try {
-        // Intercambiar el código por el access_token
         const tokenResponse = await axios.post(
             "https://www.patreon.com/api/oauth2/token",
             {
@@ -47,7 +63,6 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
-        // Obtener datos del usuario + niveles
         const userResponse = await axios.get(
             "https://www.patreon.com/api/oauth2/v2/identity?include=memberships.currently_entitled_tiers",
             {
@@ -57,9 +72,7 @@ app.get("/callback", async (req, res) => {
 
         const memberships = userResponse.data.included;
 
-        // =========================
-        // VIP PARA TODOS LOS NIVELES
-        // =========================
+        // VIP para todos los niveles
         const tieneNivel = memberships && memberships.length > 0;
 
         if (!tieneNivel) {
@@ -68,23 +81,19 @@ app.get("/callback", async (req, res) => {
             );
         }
 
-        // =========================
-        // CREAR COOKIE VIP
-        // =========================
+        // Crear cookie VIP
         res.cookie("vip", "true", {
             httpOnly: false,
             secure: true,
             sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
+            maxAge: 1000 * 60 * 60 * 24 * 30
         });
 
-        // =========================
-        // REDIRIGIR A VIP.HTML
-        // =========================
+        // Redirigir a VIP.html
         res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
     } catch (err) {
-        console.error(err.response?.data || err);
+        console.error("ERROR CALLBACK:", err.response?.data || err);
         res.status(500).send("Error en callback");
     }
 });
