@@ -6,6 +6,9 @@ const cors = require("cors");
 
 const app = express();
 
+// ⭐ NECESARIO PARA QUE EXPRESS ACEPTE COOKIES Y JSON
+app.use(express.json());
+
 // ⭐ ACTIVAR CORS PARA GITHUB PAGES
 app.use(cors({
   origin: "https://ellinkconanuncios.github.io",
@@ -51,7 +54,7 @@ app.get("/callback", async (req, res) => {
     const isMember = memberships && memberships.length > 0;
 
     if (!isMember) {
-      return res.status(403).send("✖ No eres VIP");
+      return res.status(403).send("✘ No eres VIP");
     }
 
     // ⭐ Crear cookie VIP cross-site
