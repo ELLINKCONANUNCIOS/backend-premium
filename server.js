@@ -81,5 +81,4 @@ app.get("/vip-check", (req, res) => {
 });
 
 // ⭐ Iniciar servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("VIP backend activo"));
+app.listen(8080);
