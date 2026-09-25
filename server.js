@@ -42,7 +42,21 @@ app.get("/", (req, res) => {
 });
 
 // =========================
-// CALLBACK DE PATREON (CORREGIDO)
+// LOGIN → REDIRIGE A PATREON
+// =========================
+
+app.get("/login", (req, res) => {
+    const url =
+        "https://www.patreon.com/oauth2/authorize" +
+        "?response_type=code" +
+        "&client_id=" + process.env.CLIENT_ID +
+        "&redirect_uri=" + process.env.REDIRECT_URI;
+
+    res.redirect(url);
+});
+
+// =========================
+// CALLBACK UNIVERSAL (FUNCIONA PARA VIP REGALADO)
 // =========================
 
 app.get("/callback", async (req, res) => {
@@ -64,24 +78,23 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
-        // 2. Obtener datos del usuario + niveles (CORREGIDO)
+        // 2. Obtener datos del usuario + membresías (UNIVERSAL)
         const userResponse = await axios.get(
             "https://www.patreon.com/api/oauth2/v2/identity" +
-            "?include=memberships.currently_entitled_tiers" +
-            "&fields[member]=currently_entitled_tiers",
+            "?include=memberships" +
+            "&fields[member]=patron_status",
             {
                 headers: { Authorization: `Bearer ${accessToken}` }
             }
         );
 
-        // 3. Extraer niveles correctamente
+        // 3. Extraer membresías
         const memberships = userResponse.data.included;
 
-        // 4. Detectar si tiene algún nivel activo
+        // 4. Detectar si tiene membresía activa
         const tieneNivel = memberships && memberships.length > 0;
 
         if (!tieneNivel) {
-            // No tiene membresía → redirigir con mensaje
             return res.redirect(
                 "https://ellinkconanuncios.github.io/vip.html?no_membresia=true"
             );
@@ -96,24 +109,6 @@ app.get("/callback", async (req, res) => {
         });
 
         // 6. Redirigir a tu VIP.html
-        res.redirect("https://ellinkconanuncios.github.io/vip.html");
-
-    } catch (err) {
-        console.error("ERROR CALLBACK:", err.response?.data || err);
-        res.status(500).send("Error en callback");
-    }
-});
-
-
-        // Crear cookie VIP
-        res.cookie("vip", "true", {
-            httpOnly: false,
-            secure: true,
-            sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24 * 30
-        });
-
-        // Redirigir a VIP.html
         res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
     } catch (err) {
