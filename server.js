@@ -7,29 +7,29 @@ const qs = require("qs");
 
 const app = express();
 
-// ⭐ NECESARIO PARA JSON Y COOKIES
+// ⭐ Middleware
 app.use(express.json());
 app.use(cookieParser());
 
-// ⭐ ACTIVAR CORS PARA TU FRONTEND
+// ⭐ CORS para GitHub Pages
 app.use(cors({
   origin: "https://ellinkconanuncios.github.io",
   credentials: true
 }));
 
-// ⭐ RUTA LOGIN (Patreon OAuth2)
+// ⭐ LOGIN → Patreon OAuth2
 app.get("/login", (req, res) => {
   const redirect = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${process.env.CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&scope=identity%20identity.memberships`;
   res.redirect(redirect);
 });
 
-// ⭐ CALLBACK (Patreon devuelve el código)
+// ⭐ CALLBACK → Verificación de membresía
 app.get("/callback", async (req, res) => {
   const code = req.query.code;
   if (!code) return res.send("Error: falta el código");
 
   try {
-    // ⭐ Intercambiar código por token (Patreon exige x-www-form-urlencoded)
+    // ⭐ Intercambiar código por token
     const tokenResponse = await axios.post(
       "https://www.patreon.com/api/oauth2/token",
       qs.stringify({
@@ -40,15 +40,13 @@ app.get("/callback", async (req, res) => {
         redirect_uri: process.env.REDIRECT_URI
       }),
       {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        }
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
       }
     );
 
     const accessToken = tokenResponse.data.access_token;
 
-    // ⭐ Verificar membresía real
+    // ⭐ Obtener membresía real
     const userResponse = await axios.get(
       "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
       {
@@ -57,25 +55,37 @@ app.get("/callback", async (req, res) => {
     );
 
     const memberships = userResponse.data.included;
-    const isMember = memberships && memberships.length > 0;
+
+    // ⭐ VALIDACIÓN REAL (sin VIP falsos)
+    const isMember =
+      Array.isArray(memberships) &&
+      memberships.length > 0 &&
+      memberships.some(m => m.type === "member");
 
     if (!isMember) {
+      // ❌ NO VIP → limpiar cookie
+      res.clearCookie("vip", {
+        httpOnly: false,
+        secure: true,
+        sameSite: "none"
+      });
+
       return res.status(403).send("✘ No eres VIP");
     }
 
-    // ⭐ Crear cookie VIP cross-site
+    // ⭐ SÍ VIP → crear cookie cross‑site
     res.cookie("vip", "true", {
       httpOnly: false,
       secure: true,
       sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24 * 30
+      maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
     });
 
-    // ⭐ Redirigir a tu VIP.html
+    // ⭐ Redirigir a tu zona VIP
     res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
   } catch (err) {
-    console.error(err.response?.data || err);
+    console.error("ERROR CALLBACK:", err.response?.data || err);
     res.status(500).send("Error en callback");
   }
 });
