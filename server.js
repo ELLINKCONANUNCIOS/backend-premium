@@ -79,5 +79,6 @@ app.get("/vip-check", (req, res) => {
   res.json({ vip });
 });
 
-// ⭐ FORZAR PUERTO 8080
-app.listen(8080, () => console.log("VIP backend activo en puerto 8080"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("VIP backend activo"));
+
