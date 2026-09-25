@@ -59,6 +59,7 @@ app.get("/callback", async (req, res) => {
     if (!code) return res.send("Error: falta el código");
 
     try {
+        // 1. Intercambiar el código por el access_token
         const tokenResponse = await axios.post(
             "https://www.patreon.com/api/oauth2/token",
             {
@@ -72,6 +73,7 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
+        // 2. Obtener datos del usuario + membresías
         const userResponse = await axios.get(
             "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
             {
@@ -79,8 +81,8 @@ app.get("/callback", async (req, res) => {
             }
         );
 
+        // 3. Detectar si existe un "member" (VIP normal o regalado)
         const memberships = userResponse.data.included;
-
         const esVIP = memberships && memberships.some(m => m.type === "member");
 
         if (!esVIP) {
@@ -89,6 +91,7 @@ app.get("/callback", async (req, res) => {
             );
         }
 
+        // 4. Crear cookie VIP
         res.cookie("vip", "true", {
             httpOnly: false,
             secure: true,
@@ -96,6 +99,7 @@ app.get("/callback", async (req, res) => {
             maxAge: 1000 * 60 * 60 * 24 * 30
         });
 
+        // 5. Redirigir a VIP.html
         res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
     } catch (err) {
