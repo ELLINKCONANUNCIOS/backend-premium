@@ -42,7 +42,7 @@ app.get("/", (req, res) => {
 });
 
 // =========================
-// CALLBACK DE PATREON
+// CALLBACK DE PATREON (CORREGIDO)
 // =========================
 
 app.get("/callback", async (req, res) => {
@@ -50,6 +50,7 @@ app.get("/callback", async (req, res) => {
     if (!code) return res.send("Error: falta el código");
 
     try {
+        // 1. Intercambiar el código por el access_token
         const tokenResponse = await axios.post(
             "https://www.patreon.com/api/oauth2/token",
             {
@@ -63,23 +64,46 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
+        // 2. Obtener datos del usuario + niveles (CORREGIDO)
         const userResponse = await axios.get(
-            "https://www.patreon.com/api/oauth2/v2/identity?include=memberships.currently_entitled_tiers",
+            "https://www.patreon.com/api/oauth2/v2/identity" +
+            "?include=memberships.currently_entitled_tiers" +
+            "&fields[member]=currently_entitled_tiers",
             {
                 headers: { Authorization: `Bearer ${accessToken}` }
             }
         );
 
+        // 3. Extraer niveles correctamente
         const memberships = userResponse.data.included;
 
-        // VIP para todos los niveles
+        // 4. Detectar si tiene algún nivel activo
         const tieneNivel = memberships && memberships.length > 0;
 
         if (!tieneNivel) {
+            // No tiene membresía → redirigir con mensaje
             return res.redirect(
                 "https://ellinkconanuncios.github.io/vip.html?no_membresia=true"
             );
         }
+
+        // 5. Crear cookie VIP compatible con GitHub Pages
+        res.cookie("vip", "true", {
+            httpOnly: false,
+            secure: true,
+            sameSite: "none",
+            maxAge: 1000 * 60 * 60 * 24 * 30 // 30 días
+        });
+
+        // 6. Redirigir a tu VIP.html
+        res.redirect("https://ellinkconanuncios.github.io/vip.html");
+
+    } catch (err) {
+        console.error("ERROR CALLBACK:", err.response?.data || err);
+        res.status(500).send("Error en callback");
+    }
+});
+
 
         // Crear cookie VIP
         res.cookie("vip", "true", {
