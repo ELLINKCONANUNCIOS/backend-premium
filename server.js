@@ -6,16 +6,15 @@ const cors = require("cors");
 
 const app = express();
 
-// ⭐ NECESARIO PARA QUE EXPRESS ACEPTE COOKIES Y JSON
+// ⭐ NECESARIO PARA JSON Y COOKIES
 app.use(express.json());
+app.use(cookieParser());
 
 // ⭐ ACTIVAR CORS PARA GITHUB PAGES
 app.use(cors({
   origin: "https://ellinkconanuncios.github.io",
   credentials: true
 }));
-
-app.use(cookieParser());
 
 // ⭐ RUTA LOGIN (Patreon)
 app.get("/login", (req, res) => {
@@ -80,5 +79,5 @@ app.get("/vip-check", (req, res) => {
   res.json({ vip });
 });
 
-// ⭐ Iniciar servidor
-app.listen(8080);
+// ⭐ FORZAR PUERTO 8080
+app.listen(8080, () => console.log("VIP backend activo en puerto 8080"));
