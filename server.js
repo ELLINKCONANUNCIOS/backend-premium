@@ -17,19 +17,19 @@ app.use(cors({
   credentials: true
 }));
 
-// LOGIN → Patreon OAuth2
+// ⭐ LOGIN → Patreon OAuth2
 app.get("/login", (req, res) => {
   const redirect = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${process.env.CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&scope=identity%20identity.memberships`;
   res.redirect(redirect);
 });
 
-// CALLBACK → Verificar membresía real
+// ⭐ CALLBACK → Verificar membresía real
 app.get("/callback", async (req, res) => {
   const code = req.query.code;
   if (!code) return res.send("Error: falta el código");
 
   try {
-    // Obtener token
+    // ⭐ Obtener token
     const tokenResponse = await axios.post(
       "https://www.patreon.com/api/oauth2/token",
       qs.stringify({
@@ -44,7 +44,7 @@ app.get("/callback", async (req, res) => {
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Obtener usuario + membresías
+    // ⭐ Obtener usuario + membresías
     const userResponse = await axios.get(
       "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -52,24 +52,24 @@ app.get("/callback", async (req, res) => {
 
     const memberships = userResponse.data.included;
 
-    // Validación REAL de VIP (sin falsos)
+    // ⭐ VALIDACIÓN REAL DE VIP (sin VIP falsos)
     const isMember =
       Array.isArray(memberships) &&
       memberships.length > 0 &&
       memberships.some(m => m.type === "membership");
 
     if (!isMember) {
-      // No es VIP → limpiar cookie y volver a VIP
+      // ❌ NO VIP → limpiar cookie y mostrar mensaje
       res.clearCookie("vip", {
         httpOnly: false,
         secure: true,
         sameSite: "none"
       });
 
-      return res.redirect("https://ellinkconanuncios.github.io/vip.html?no_vip=true");
+      return res.redirect("https://ellinkconanuncios.github.io/vip.html?no_membresia=true");
     }
 
-    // Sí es VIP → crear cookie
+    // ⭐ SÍ VIP → crear cookie
     res.cookie("vip", "true", {
       httpOnly: false,
       secure: true,
@@ -85,13 +85,13 @@ app.get("/callback", async (req, res) => {
   }
 });
 
-// Verificar cookie VIP
+// ⭐ Verificar cookie VIP
 app.get("/vip-check", (req, res) => {
   const vip = req.cookies.vip === "true";
   res.json({ vip });
 });
 
-// Cerrar sesión VIP
+// ⭐ Cerrar sesión VIP
 app.get("/logout-vip", (req, res) => {
   res.clearCookie("vip", {
     httpOnly: false,
@@ -102,6 +102,6 @@ app.get("/logout-vip", (req, res) => {
   res.redirect("https://ellinkconanuncios.github.io/vip.html");
 });
 
-// Puerto dinámico para Railway
+// ⭐ Puerto dinámico para Railway
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("VIP backend activo en puerto", PORT));
