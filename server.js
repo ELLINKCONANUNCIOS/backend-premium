@@ -96,6 +96,16 @@ app.get("/vip-check", (req, res) => {
   res.json({ vip });
 });
 
+app.get("/logout-vip", (req, res) => {
+  res.clearCookie("vip", {
+    httpOnly: false,
+    secure: true,
+    sameSite: "none"
+  });
+
+  res.redirect("https://ellinkconanuncios.github.io/vip.html");
+});
+
 // ⭐ Puerto dinámico para Railway
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("VIP backend activo"));
