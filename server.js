@@ -61,7 +61,7 @@ app.get("/callback", async (req, res) => {
     if (!code) return res.send("Error: falta el código");
 
     try {
-        // 1. Intercambiar el código por el access_token (FORM-URLENCODED + Accept)
+        // 1. Intercambiar el código por el access_token
         const tokenResponse = await axios.post(
             "https://www.patreon.com/api/oauth2/token",
             qs.stringify({
@@ -104,6 +104,8 @@ app.get("/callback", async (req, res) => {
             httpOnly: false,
             secure: true,
             sameSite: "none",
+            domain: "backend-premium-production-29b1.up.railway.app",
+            path: "/",
             maxAge: 1000 * 60 * 60 * 24 * 30
         });
 
@@ -115,7 +117,6 @@ app.get("/callback", async (req, res) => {
         res.status(500).send("Error en callback");
     }
 });
-
 
 // =========================
 // VIP-CHECK
@@ -130,18 +131,25 @@ app.get("/vip-check", (req, res) => {
         res.json({ vip: false });
     }
 });
+
+// =========================
+// LOGOUT VIP (CORREGIDO)
+// =========================
+
 app.get("/logout-vip", (req, res) => {
     res.clearCookie("vip", {
         httpOnly: false,
         secure: true,
-        sameSite: "none"
+        sameSite: "none",
+        domain: "backend-premium-production-29b1.up.railway.app",
+        path: "/"
     });
 
     res.redirect("https://ellinkconanuncios.github.io/vip.html");
 });
 
 // =========================
-// INICIAR SERVIDOR (PUERTO DINÁMICO DE RAILWAY)
+// INICIAR SERVIDOR
 // =========================
 
 const PORT = process.env.PORT;
