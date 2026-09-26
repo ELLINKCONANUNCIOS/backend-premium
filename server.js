@@ -47,13 +47,13 @@ app.get("/login", (req, res) => {
         "https://www.patreon.com/oauth2/authorize" +
         "?response_type=code" +
         "&client_id=" + process.env.CLIENT_ID +
-        "&redirect_uri=" + process.env.REDIRECT_URI;
+        "&redirect_uri=https://ellinkconanuncios.github.io/callback.html";
 
     res.redirect(url);
 });
 
 // =========================
-// CALLBACK UNIVERSAL (VIP NORMAL + VIP REGALADO + AUTO-VIP)
+// CALLBACK (GitHub Pages → Railway)
 // =========================
 
 app.get("/callback", async (req, res) => {
@@ -69,7 +69,7 @@ app.get("/callback", async (req, res) => {
                 code,
                 client_id: process.env.CLIENT_ID,
                 client_secret: process.env.CLIENT_SECRET,
-                redirect_uri: process.env.REDIRECT_URI
+                redirect_uri: "https://ellinkconanuncios.github.io/callback.html"
             }),
             {
                 headers: {
@@ -81,7 +81,7 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
-        // Guardar token en cookie para auto-VIP
+        // Guardar token en cookie
         res.cookie("patreon_token", accessToken, {
             httpOnly: true,
             secure: true,
