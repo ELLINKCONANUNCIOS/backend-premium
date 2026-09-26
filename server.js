@@ -86,7 +86,6 @@ app.get("/callback", async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: "none",
-            domain: "backend-premium-production-29b1.up.railway.app",
             path: "/",
             maxAge: 1000 * 60 * 60 * 24 * 30
         });
@@ -113,7 +112,6 @@ app.get("/callback", async (req, res) => {
                 httpOnly: false,
                 secure: true,
                 sameSite: "none",
-                domain: "backend-premium-production-29b1.up.railway.app",
                 path: "/"
             });
 
@@ -127,7 +125,6 @@ app.get("/callback", async (req, res) => {
             httpOnly: false,
             secure: true,
             sameSite: "none",
-            domain: "backend-premium-production-29b1.up.railway.app",
             path: "/",
             maxAge: 1000 * 60 * 60 * 24 * 30
         });
@@ -180,7 +177,6 @@ app.get("/vip-check", async (req, res) => {
                 httpOnly: false,
                 secure: true,
                 sameSite: "none",
-                domain: "backend-premium-production-29b1.up.railway.app",
                 path: "/"
             });
 
@@ -205,7 +201,6 @@ app.get("/logout-vip", (req, res) => {
         httpOnly: false,
         secure: true,
         sameSite: "none",
-        domain: "backend-premium-production-29b1.up.railway.app",
         path: "/"
     });
 
@@ -213,7 +208,6 @@ app.get("/logout-vip", (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        domain: "backend-premium-production-29b1.up.railway.app",
         path: "/"
     });
 
