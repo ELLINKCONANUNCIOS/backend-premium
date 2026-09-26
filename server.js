@@ -91,8 +91,10 @@ app.get("/callback", async (req, res) => {
 
         // 3. Detectar si existe un "member" (VIP normal o regalado)
         const memberships = userResponse.data.included;
-        const esVIP = memberships && memberships.some(m => m.type === "member");
-
+        const esVIP = memberships && memberships.some(m =>
+           m.type === "member" &&
+           m.attributes.patron_status === "active_patron"
+       );
         if (!esVIP) {
             return res.redirect(
                 "https://ellinkconanuncios.github.io/vip.html?no_membresia=true"
