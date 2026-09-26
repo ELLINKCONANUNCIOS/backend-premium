@@ -63,20 +63,22 @@ app.get("/callback", async (req, res) => {
     try {
         // 1. Intercambiar el código por el access_token (FORM-URLENCODED)
         const tokenResponse = await axios.post(
-            "https://www.patreon.com/api/oauth2/token",
-            qs.stringify({
-                grant_type: "authorization_code",
-                code,
-                client_id: process.env.CLIENT_ID,
-                client_secret: process.env.CLIENT_SECRET,
-                redirect_uri: process.env.REDIRECT_URI
-            }),
-            {
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-            }
-        );
+       const tokenResponse = await axios.post(
+    "https://www.patreon.com/api/oauth2/token",
+    qs.stringify({
+        grant_type: "authorization_code",
+        code,
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        redirect_uri: process.env.REDIRECT_URI
+    }),
+    {
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"
+        }
+    }
+);
 
         const accessToken = tokenResponse.data.access_token;
 
