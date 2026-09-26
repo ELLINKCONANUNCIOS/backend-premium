@@ -89,19 +89,30 @@ app.get("/callback", async (req, res) => {
             }
         );
 
-        // 3. Detectar si existe un "member" (VIP normal o regalado)
+        // 3. Detectar VIP SOLO si patron_status === active_patron
         const memberships = userResponse.data.included;
+
         const esVIP = memberships && memberships.some(m =>
-           m.type === "member" &&
-           m.attributes.patron_status === "active_patron"
-       );
+            m.type === "member" &&
+            m.attributes.patron_status === "active_patron"
+        );
+
+        // 4. Si NO es VIP → borrar cookie y redirigir
         if (!esVIP) {
+            res.clearCookie("vip", {
+                httpOnly: false,
+                secure: true,
+                sameSite: "none",
+                domain: "backend-premium-production-29b1.up.railway.app",
+                path: "/"
+            });
+
             return res.redirect(
                 "https://ellinkconanuncios.github.io/vip.html?no_membresia=true"
             );
         }
 
-        // 4. Crear cookie VIP
+        // 5. Crear cookie VIP si está activo
         res.cookie("vip", "true", {
             httpOnly: false,
             secure: true,
@@ -111,7 +122,7 @@ app.get("/callback", async (req, res) => {
             maxAge: 1000 * 60 * 60 * 24 * 30
         });
 
-        // 5. Redirigir a VIP.html
+        // 6. Redirigir a VIP.html
         res.redirect("https://ellinkconanuncios.github.io/vip.html");
 
     } catch (err) {
