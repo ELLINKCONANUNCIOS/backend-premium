@@ -61,24 +61,23 @@ app.get("/callback", async (req, res) => {
     if (!code) return res.send("Error: falta el código");
 
     try {
-        // 1. Intercambiar el código por el access_token (FORM-URLENCODED)
+        // 1. Intercambiar el código por el access_token (FORM-URLENCODED + Accept)
         const tokenResponse = await axios.post(
-       const tokenResponse = await axios.post(
-    "https://www.patreon.com/api/oauth2/token",
-    qs.stringify({
-        grant_type: "authorization_code",
-        code,
-        client_id: process.env.CLIENT_ID,
-        client_secret: process.env.CLIENT_SECRET,
-        redirect_uri: process.env.REDIRECT_URI
-    }),
-    {
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"
-        }
-    }
-);
+            "https://www.patreon.com/api/oauth2/token",
+            qs.stringify({
+                grant_type: "authorization_code",
+                code,
+                client_id: process.env.CLIENT_ID,
+                client_secret: process.env.CLIENT_SECRET,
+                redirect_uri: process.env.REDIRECT_URI
+            }),
+            {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json"
+                }
+            }
+        );
 
         const accessToken = tokenResponse.data.access_token;
 
@@ -116,6 +115,7 @@ app.get("/callback", async (req, res) => {
         res.status(500).send("Error en callback");
     }
 });
+
 
 // =========================
 // VIP-CHECK
