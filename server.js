@@ -53,7 +53,7 @@ app.get("/login", (req, res) => {
 });
 
 // =========================
-// CALLBACK UNIVERSAL (VIP NORMAL + VIP REGALADO)
+// CALLBACK UNIVERSAL (VIP NORMAL + VIP REGALADO + AUTO-VIP)
 // =========================
 
 app.get("/callback", async (req, res) => {
@@ -81,6 +81,16 @@ app.get("/callback", async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
+        // Guardar token en cookie para auto-VIP
+        res.cookie("patreon_token", accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            domain: "backend-premium-production-29b1.up.railway.app",
+            path: "/",
+            maxAge: 1000 * 60 * 60 * 24 * 30
+        });
+
         // 2. Obtener datos del usuario + membresías
         const userResponse = await axios.get(
             "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
@@ -89,9 +99,9 @@ app.get("/callback", async (req, res) => {
             }
         );
 
-        // 3. Detectar VIP SOLO si patron_status === active_patron
         const memberships = userResponse.data.included;
 
+        // 3. Detectar VIP SOLO si patron_status === active_patron
         const esVIP = memberships && memberships.some(m =>
             m.type === "member" &&
             m.attributes.patron_status === "active_patron"
@@ -132,13 +142,54 @@ app.get("/callback", async (req, res) => {
 });
 
 // =========================
-// VIP-CHECK
+// AUTO-VIP CHECK (VERIFICA PATREON EN CADA VISITA)
 // =========================
 
-app.get("/vip-check", (req, res) => {
+app.get("/vip-check", async (req, res) => {
     try {
-        const vip = req.cookies.vip === "true";
-        res.json({ vip });
+        const vipCookie = req.cookies.vip === "true";
+
+        // Si no hay cookie → no es VIP
+        if (!vipCookie) {
+            return res.json({ vip: false });
+        }
+
+        // Si hay cookie → verificar en Patreon
+        const accessToken = req.cookies.patreon_token;
+        if (!accessToken) {
+            return res.json({ vip: false });
+        }
+
+        const userResponse = await axios.get(
+            "https://www.patreon.com/api/oauth2/v2/identity?include=memberships",
+            {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            }
+        );
+
+        const memberships = userResponse.data.included;
+
+        const esVIP = memberships && memberships.some(m =>
+            m.type === "member" &&
+            m.attributes.patron_status === "active_patron"
+        );
+
+        if (!esVIP) {
+            // borrar cookie VIP
+            res.clearCookie("vip", {
+                httpOnly: false,
+                secure: true,
+                sameSite: "none",
+                domain: "backend-premium-production-29b1.up.railway.app",
+                path: "/"
+            });
+
+            return res.json({ vip: false });
+        }
+
+        // Si sigue activo
+        res.json({ vip: true });
+
     } catch (err) {
         console.error("Error en vip-check:", err);
         res.json({ vip: false });
@@ -146,12 +197,20 @@ app.get("/vip-check", (req, res) => {
 });
 
 // =========================
-// LOGOUT VIP (CORREGIDO)
+// LOGOUT VIP
 // =========================
 
 app.get("/logout-vip", (req, res) => {
     res.clearCookie("vip", {
         httpOnly: false,
+        secure: true,
+        sameSite: "none",
+        domain: "backend-premium-production-29b1.up.railway.app",
+        path: "/"
+    });
+
+    res.clearCookie("patreon_token", {
+        httpOnly: true,
         secure: true,
         sameSite: "none",
         domain: "backend-premium-production-29b1.up.railway.app",
