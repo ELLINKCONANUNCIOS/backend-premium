@@ -130,6 +130,15 @@ app.get("/vip-check", (req, res) => {
         res.json({ vip: false });
     }
 });
+app.get("/logout-vip", (req, res) => {
+    res.clearCookie("vip", {
+        httpOnly: false,
+        secure: true,
+        sameSite: "none"
+    });
+
+    res.redirect("https://ellinkconanuncios.github.io/vip.html");
+});
 
 // =========================
 // INICIAR SERVIDOR (PUERTO DINÁMICO DE RAILWAY)
