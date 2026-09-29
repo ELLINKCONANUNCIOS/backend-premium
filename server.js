@@ -23,24 +23,25 @@ const REDIRECT_URI =
     process.env.PATREON_REDIRECT_URI ||
     "https://backend-premium-production-29b1.up.railway.app/callback";
 
-// IMPORTANTE:
-// Pon aquí el ID de TU campaña de Patreon en Railway.
-const PATREON_CAMPAIGN_ID = process.env.PATREON_CAMPAIGN_ID;
+// Nombre público de tu campaña/página de Patreon
+const PATREON_CAMPAIGN_VANITY = "ELLINKCONANUNCIOS";
 
 // =========================
 // VALIDAR VARIABLES
 // =========================
 
 if (!CLIENT_ID) {
-    console.error("Falta CLIENT_ID en las variables de Railway.");
+    console.error("Falta CLIENT_ID en Railway.");
 }
 
 if (!CLIENT_SECRET) {
-    console.error("Falta CLIENT_SECRET en las variables de Railway.");
+    console.error("Falta CLIENT_SECRET en Railway.");
 }
 
-if (!PATREON_CAMPAIGN_ID) {
-    console.error("Falta PATREON_CAMPAIGN_ID en las variables de Railway.");
+if (!process.env.PATREON_REDIRECT_URI) {
+    console.warn(
+        "PATREON_REDIRECT_URI no está configurada. Se utilizará la URL predeterminada."
+    );
 }
 
 // =========================
@@ -50,23 +51,17 @@ if (!PATREON_CAMPAIGN_ID) {
 app.use(express.json());
 app.use(cookieParser());
 
-app.use(
-    cors({
-        origin: FRONTEND_URL,
-        credentials: true
-    })
-);
+const corsOptions = {
+    origin: FRONTEND_URL,
+    credentials: true
+};
 
-app.options(
-    "*",
-    cors({
-        origin: FRONTEND_URL,
-        credentials: true
-    })
-);
+app.use(cors(corsOptions));
+
+app.options("*", cors(corsOptions));
 
 // =========================
-// RUTA RAÍZ
+// RUTA PRINCIPAL
 // =========================
 
 app.get("/", (req, res) => {
@@ -79,10 +74,8 @@ app.get("/", (req, res) => {
 
 app.get("/login", (req, res) => {
     try {
-        // Crear estado aleatorio para proteger OAuth
         const state = crypto.randomBytes(32).toString("hex");
 
-        // Guardar state temporalmente en cookie
         res.cookie("oauth_state", state, {
             httpOnly: true,
             secure: true,
@@ -103,11 +96,16 @@ app.get("/login", (req, res) => {
             "https://www.patreon.com/oauth2/authorize?" +
             params.toString();
 
+        console.log("Redirigiendo a Patreon...");
+        console.log("Redirect URI:", REDIRECT_URI);
+
         res.redirect(url);
 
     } catch (err) {
         console.error("ERROR LOGIN:", err);
-        res.status(500).send("Error iniciando sesión con Patreon.");
+        res.status(500).send(
+            "Error iniciando sesión con Patreon."
+        );
     }
 });
 
@@ -116,11 +114,13 @@ app.get("/login", (req, res) => {
 // =========================
 
 app.get("/callback", async (req, res) => {
+
     const code = req.query.code;
     const state = req.query.state;
 
-    // Patreon puede devolver error
+    // Patreon devolvió un error
     if (req.query.error) {
+
         console.error(
             "Patreon OAuth error:",
             req.query.error,
@@ -128,21 +128,28 @@ app.get("/callback", async (req, res) => {
         );
 
         return res.redirect(
-            FRONTEND_URL + "/vip.html?login_error=true"
+            FRONTEND_URL +
+            "/vip.html?login_error=true"
         );
     }
 
-    // Verificar code
+    // No hay código
     if (!code) {
+
         return res.redirect(
-            FRONTEND_URL + "/vip.html?login_error=true"
+            FRONTEND_URL +
+            "/vip.html?login_error=true"
         );
     }
 
-    // Verificar state
+    // =========================
+    // VERIFICAR STATE
+    // =========================
+
     const savedState = req.cookies.oauth_state;
 
     if (!state || !savedState || state !== savedState) {
+
         console.error("OAuth state inválido.");
 
         return res.status(403).send(
@@ -150,7 +157,6 @@ app.get("/callback", async (req, res) => {
         );
     }
 
-    // Borrar state usado
     res.clearCookie("oauth_state", {
         httpOnly: true,
         secure: true,
@@ -161,8 +167,7 @@ app.get("/callback", async (req, res) => {
     try {
 
         // =========================
-        // 1. INTERCAMBIAR CODE
-        // POR ACCESS TOKEN
+        // INTERCAMBIAR CODE POR TOKEN
         // =========================
 
         const tokenResponse = await axios.post(
@@ -176,81 +181,126 @@ app.get("/callback", async (req, res) => {
             }),
             {
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "application/json"
+                    "Content-Type":
+                        "application/x-www-form-urlencoded",
+                    Accept: "application/json"
                 }
             }
         );
 
-        const accessToken = tokenResponse.data.access_token;
+        const accessToken =
+            tokenResponse.data.access_token;
 
         if (!accessToken) {
-            throw new Error("Patreon no devolvió access_token.");
+            throw new Error(
+                "Patreon no devolvió access_token."
+            );
         }
 
         // =========================
-        // 2. OBTENER MEMBRESÍAS
+        // OBTENER USUARIO + MEMBRESÍAS
+        // + CAMPAÑA
         // =========================
 
         const userResponse = await axios.get(
             "https://www.patreon.com/api/oauth2/v2/identity",
             {
                 params: {
-                    include: "memberships",
+                    include: "memberships,memberships.campaign",
+
                     "fields[member]":
-                        "patron_status,currently_entitled_amount_cents"
+                        "patron_status,currently_entitled_amount_cents",
+
+                    "fields[campaign]":
+                        "vanity,creation_name"
                 },
+
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization:
+                        `Bearer ${accessToken}`,
+
                     Accept: "application/json"
                 }
             }
         );
 
-        const included = userResponse.data.included || [];
+        const included =
+            userResponse.data.included || [];
 
         // =========================
-        // 3. BUSCAR MEMBRESÍA
-        // DE TU CAMPAÑA
+        // BUSCAR MEMBRESÍA ACTIVA
+        // DE NUESTRA CAMPAÑA
         // =========================
 
-        const membership = included.find((member) => {
+        let membershipEncontrada = null;
+
+        for (const member of included) {
 
             if (member.type !== "member") {
-                return false;
+                continue;
+            }
+
+            const patronStatus =
+                member.attributes?.patron_status;
+
+            if (patronStatus !== "active_patron") {
+                continue;
             }
 
             const campaignId =
                 member.relationships?.campaign?.data?.id;
 
-            return campaignId === PATREON_CAMPAIGN_ID;
-        });
+            if (!campaignId) {
+                continue;
+            }
+
+            const campaign = included.find(
+                item =>
+                    item.type === "campaign" &&
+                    item.id === campaignId
+            );
+
+            if (!campaign) {
+                continue;
+            }
+
+            const vanity =
+                campaign.attributes?.vanity;
+
+            console.log(
+                "Campaña encontrada:",
+                vanity || "sin vanity"
+            );
+
+            if (
+                vanity &&
+                vanity.toLowerCase() ===
+                PATREON_CAMPAIGN_VANITY.toLowerCase()
+            ) {
+
+                membershipEncontrada = member;
+                break;
+            }
+        }
 
         // =========================
-        // 4. VERIFICAR MEMBRESÍA ACTIVA
+        // RESULTADO VIP
         // =========================
 
         const esVIP =
-            membership &&
-            membership.attributes?.patron_status === "active_patron";
+            !!membershipEncontrada;
 
         console.log(
-            "Membresía encontrada:",
-            membership ? membership.id : "NO"
-        );
-
-        console.log(
-            "Estado Patreon:",
-            membership?.attributes?.patron_status || "N/A"
+            "¿Usuario VIP?:",
+            esVIP
         );
 
         // =========================
-        // 5. NO ES VIP
+        // NO ES VIP
         // =========================
 
         if (!esVIP) {
 
-            // No guardamos token si no tiene acceso
             return res.redirect(
                 FRONTEND_URL +
                 "/vip.html?no_membresia=true"
@@ -258,31 +308,42 @@ app.get("/callback", async (req, res) => {
         }
 
         // =========================
-        // 6. GUARDAR TOKEN
-        // EN COOKIE SEGURA
+        // GUARDAR TOKEN
         // =========================
 
-        res.cookie("patreon_token", accessToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            path: "/",
-            maxAge: 1000 * 60 * 60 * 24 * 30
-        });
+        res.cookie(
+            "patreon_token",
+            accessToken,
+            {
+                httpOnly: true,
+                secure: true,
+                sameSite: "none",
+                path: "/",
+                maxAge:
+                    1000 *
+                    60 *
+                    60 *
+                    24 *
+                    30
+            }
+        );
 
         // =========================
-        // 7. REDIRIGIR AL VIP
+        // ENTRAR AL VIP
         // =========================
 
         return res.redirect(
-            FRONTEND_URL + "/vip.html"
+            FRONTEND_URL +
+            "/vip.html"
         );
 
     } catch (err) {
 
         console.error(
             "ERROR CALLBACK:",
-            err.response?.data || err.message || err
+            err.response?.data ||
+            err.message ||
+            err
         );
 
         return res.redirect(
@@ -293,7 +354,7 @@ app.get("/callback", async (req, res) => {
 });
 
 // =========================
-// FUNCIÓN PARA VERIFICAR VIP
+// COMPROBAR VIP
 // =========================
 
 async function comprobarVIP(accessToken) {
@@ -308,41 +369,79 @@ async function comprobarVIP(accessToken) {
             "https://www.patreon.com/api/oauth2/v2/identity",
             {
                 params: {
-                    include: "memberships",
+
+                    include:
+                        "memberships,memberships.campaign",
+
                     "fields[member]":
-                        "patron_status,currently_entitled_amount_cents"
+                        "patron_status,currently_entitled_amount_cents",
+
+                    "fields[campaign]":
+                        "vanity,creation_name"
                 },
+
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization:
+                        `Bearer ${accessToken}`,
+
                     Accept: "application/json"
                 }
             }
         );
 
-        const included = userResponse.data.included || [];
+        const included =
+            userResponse.data.included || [];
 
-        const membership = included.find((member) => {
+        for (const member of included) {
 
             if (member.type !== "member") {
-                return false;
+                continue;
+            }
+
+            if (
+                member.attributes?.patron_status !==
+                "active_patron"
+            ) {
+                continue;
             }
 
             const campaignId =
                 member.relationships?.campaign?.data?.id;
 
-            return campaignId === PATREON_CAMPAIGN_ID;
-        });
+            if (!campaignId) {
+                continue;
+            }
 
-        return (
-            !!membership &&
-            membership.attributes?.patron_status === "active_patron"
-        );
+            const campaign = included.find(
+                item =>
+                    item.type === "campaign" &&
+                    item.id === campaignId
+            );
+
+            if (!campaign) {
+                continue;
+            }
+
+            const vanity =
+                campaign.attributes?.vanity;
+
+            if (
+                vanity &&
+                vanity.toLowerCase() ===
+                PATREON_CAMPAIGN_VANITY.toLowerCase()
+            ) {
+                return true;
+            }
+        }
+
+        return false;
 
     } catch (err) {
 
         console.error(
             "Error comprobando Patreon:",
-            err.response?.data || err.message
+            err.response?.data ||
+            err.message
         );
 
         return false;
@@ -350,29 +449,35 @@ async function comprobarVIP(accessToken) {
 }
 
 // =========================
-// COMPROBAR VIP
+// VIP CHECK
 // =========================
 
 app.get("/vip-check", async (req, res) => {
 
-    const accessToken = req.cookies.patreon_token;
+    const accessToken =
+        req.cookies.patreon_token;
 
     if (!accessToken) {
+
         return res.json({
             vip: false
         });
     }
 
-    const esVIP = await comprobarVIP(accessToken);
+    const esVIP =
+        await comprobarVIP(accessToken);
 
     if (!esVIP) {
 
-        res.clearCookie("patreon_token", {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            path: "/"
-        });
+        res.clearCookie(
+            "patreon_token",
+            {
+                httpOnly: true,
+                secure: true,
+                sameSite: "none",
+                path: "/"
+            }
+        );
 
         return res.json({
             vip: false
@@ -390,15 +495,19 @@ app.get("/vip-check", async (req, res) => {
 
 app.get("/logout-vip", (req, res) => {
 
-    res.clearCookie("patreon_token", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/"
-    });
+    res.clearCookie(
+        "patreon_token",
+        {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            path: "/"
+        }
+    );
 
     res.redirect(
-        FRONTEND_URL + "/vip.html"
+        FRONTEND_URL +
+        "/vip.html"
     );
 });
 
@@ -407,7 +516,9 @@ app.get("/logout-vip", (req, res) => {
 // =========================
 
 app.listen(PORT, () => {
+
     console.log(
         `Servidor VIP activo en el puerto ${PORT}`
     );
+
 });
