@@ -21,7 +21,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 const REDIRECT_URI =
     process.env.PATREON_REDIRECT_URI ||
-    "https://backend-premium-production-29b1.up.railway.app/callback";
+    "https://backend-premium-production-cef8.up.railway.app/callback";
 
 // Nombre público de tu campaña/página de Patreon
 const PATREON_CAMPAIGN_VANITY = "ELLINKCONANUNCIOS";
